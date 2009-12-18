@@ -1,0 +1,12 @@
+Programming Collective Intelligence (in Ruby)
+----------------------------------------------------------
+
+This code is a port of the Python code found in the book 
+Programming Collective Intelligence, written by Toby Segaran.
+The purpose is to show some of the Algorithms in the book implemented
+in idiomatic Ruby.
+
+The original code was all written by Toby Segaran, and the copyright
+belongs to him.
+
+This port is licensed under the MIT license.
