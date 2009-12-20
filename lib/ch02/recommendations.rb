@@ -14,22 +14,84 @@ module Recommendations
   class << self
     
     def run
-      pp get_recommendations('Toby')
+      # pp sim_distance('Lisa Rose','Gene Seymour')
+      # pp sim_pearson('Lisa Rose','Gene Seymour')
+      # pp top_matches('Toby')
+      # pp get_recommendations('Toby')
+      # pp top_matches('Superman Returns', 5, transform_prefs)
+      # pp get_recommendations('Just My Luck', transform_prefs)
+      # pp calculate_similar_items
+      pp get_recommended_items(calculate_similar_items, 'Toby')
     end
     
-    def get_recommendations(person)
+    def get_recommended_items(item_match, user, data = $critics)
+      user_ratings = data[user]
+      scores = {}
+      total_sim = {}
+      
+      user_ratings.each_pair do |item, rating|
+        item_match[item].each do |rs|
+          similarity = rs[0]
+          item2 = rs[1]
+          next if user_ratings.has_key?(item2)
+          
+          scores[item2] = 0 unless scores[item2]
+          scores[item2] += similarity * rating
+          
+          total_sim[item2] = 0 unless total_sim[item2]
+          total_sim[item2] += similarity
+        end
+      end
+      rankings = scores.inject([]) do |result, kv|
+        item = kv[0]
+        score = kv[1]
+        result << [score / total_sim[item], item]
+      end
+      
+      rankings.sort!
+      rankings.reverse!
+      return rankings
+    end
+    
+    def calculate_similar_items(return_size = 10, data = $critics)
+      result = {}
+      item_prefs = transform_prefs(data)
+      c = 0
+      for item in item_prefs.keys do
+        c += 1
+        pp "#{Time.now} - count: #{c} - item size: #{item_prefs.keys.size}" if c % 100 == 0
+        scores = top_matches(item, return_size, item_prefs)
+        result[item] = scores
+      end
+      return result
+    end
+    
+    def transform_prefs(data = $critics)
+      result = {}
+      for person in data.keys do 
+        for item in data[person] do
+          key = item[0]
+          value = item[1]
+          result[key] = {} unless result[key]
+          result[key][person] = data[person][key]
+        end
+      end 
+      return result
+    end
+    
+    def get_recommendations(person, data = $critics)
       totals = {}
       sim_sums = {}
       
-      for other in $critics.keys do
+      for other in data.keys do
         next if other == person
-        sim = sim_pearson(person, other)
+        sim = sim_pearson(person, other, data)
         next if sim <= 0 
         
-        for item in $critics[other].keys do
-          if !$critics[person].has_key?(item) or $critics[person][item] == 0
+        for item in data[other].keys do
+          if !data[person].has_key?(item) or data[person][item] == 0
             totals[item] = 0 unless totals[item]
-            totals[item] += $critics[other][item] * sim
+            totals[item] += data[other][item] * sim
             sim_sums[item] = 0 unless sim_sums[item]
             sim_sums[item] += sim
           end
@@ -47,19 +109,19 @@ module Recommendations
       return rankings
     end
     
-    def top_matches(person, return_size = 5)
-      scores = $critics.keys.inject([]){|score, other| score << [sim_pearson(person, other), other] if other != person; score}
+    def top_matches(person, return_size = 5, data = $critics)
+      scores = data.keys.inject([]){|score, other| score << [sim_distance(person, other, data), other] if other != person; score}
       scores.sort!
       scores.reverse!
       return scores[0, return_size]
     end
     
-    def sim_distance(person1, person2)      
-      sum_of_squares = $critics[person1].inject(0) do |sum, kv|
+    def sim_distance(person1, person2, data = $critics)      
+      sum_of_squares = data[person1].inject(0) do |sum, kv|
         key = kv[0]
         value = kv[1]
-        if $critics[person2].keys.include?(key)
-          sum += (value - $critics[person2][key])**2
+        if data[person2].keys.include?(key)
+          sum += (value - data[person2][key])**2
         end
         sum
       end
@@ -67,20 +129,20 @@ module Recommendations
       return sum_of_squares == 0 ? 0 : 1 / (1 + sum_of_squares)
     end
     
-    def sim_pearson(person1, person2)
+    def sim_pearson(person1, person2, data = $critics)
       same_items = []
-      for item in $critics[person1].keys do
-        same_items << item if $critics[person2].has_key?(item)
+      for item in data[person1].keys do
+        same_items << item if data[person2].has_key?(item)
       end
       return 0 if same_items.empty?
       
-      sum1 = same_items.inject(0){|sum, item| sum += $critics[person1][item]}
-      sum2 = same_items.inject(0){|sum, item| sum += $critics[person2][item]}
+      sum1 = same_items.inject(0){|sum, item| sum += data[person1][item]}
+      sum2 = same_items.inject(0){|sum, item| sum += data[person2][item]}
       
-      sum1sq = same_items.inject(0){|sum, item| sum += $critics[person1][item]**2}
-      sum2sq = same_items.inject(0){|sum, item| sum += $critics[person2][item]**2}
+      sum1sq = same_items.inject(0){|sum, item| sum += data[person1][item]**2}
+      sum2sq = same_items.inject(0){|sum, item| sum += data[person2][item]**2}
       
-      p_sum = same_items.inject(0){|sum, item| sum += $critics[person1][item] * $critics[person2][item]}
+      p_sum = same_items.inject(0){|sum, item| sum += data[person1][item] * data[person2][item]}
       
       num = p_sum - (sum1 * sum2 / same_items.size)
       den = Math.sqrt((sum1sq - (sum1**2) / same_items.size) * (sum2sq - (sum2**2) / same_items.size))
