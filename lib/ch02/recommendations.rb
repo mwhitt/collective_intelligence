@@ -26,8 +26,8 @@ module Recommendations
     
     def get_recommended_items(item_match, user, data = $critics)
       user_ratings = data[user]
-      scores = {}
-      total_sim = {}
+      scores = Hash.new(0)
+      total_sim = Hash.new(0)
       
       user_ratings.each_pair do |item, rating|
         item_match[item].each do |rs|
@@ -35,10 +35,7 @@ module Recommendations
           item2 = rs[1]
           next if user_ratings.has_key?(item2)
           
-          scores[item2] = 0 unless scores[item2]
-          scores[item2] += similarity * rating
-          
-          total_sim[item2] = 0 unless total_sim[item2]
+          scores[item2] += similarity * rating          
           total_sim[item2] += similarity
         end
       end
@@ -67,12 +64,11 @@ module Recommendations
     end
     
     def transform_prefs(data = $critics)
-      result = {}
+      result = Hash.new({})
       for person in data.keys do 
         for item in data[person] do
           key = item[0]
           value = item[1]
-          result[key] = {} unless result[key]
           result[key][person] = data[person][key]
         end
       end 
@@ -80,8 +76,8 @@ module Recommendations
     end
     
     def get_recommendations(person, data = $critics)
-      totals = {}
-      sim_sums = {}
+      totals = Hash.new(0)
+      sim_sums = Hash.new(0)
       
       for other in data.keys do
         next if other == person
@@ -90,9 +86,7 @@ module Recommendations
         
         for item in data[other].keys do
           if !data[person].has_key?(item) or data[person][item] == 0
-            totals[item] = 0 unless totals[item]
             totals[item] += data[other][item] * sim
-            sim_sums[item] = 0 unless sim_sums[item]
             sim_sums[item] += sim
           end
         end

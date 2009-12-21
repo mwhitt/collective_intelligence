@@ -7,14 +7,13 @@ module GenerateFeedVector
   class << self
     
     def run      
-      apcount = {}
+      apcount = Hash.new(0)
       word_counts = {}
       for feed_url in url_list do 
         title, wc = get_word_counts(feed_url)
         next if wc.nil?
         word_counts[title] = wc
         wc.each_pair do |word, count|
-          apcount[word] = 0 unless apcount[word]
           apcount[word] += 1 if count >= 1
         end
       end
@@ -60,19 +59,18 @@ module GenerateFeedVector
         pp url
         return nil, nil
       end
-      wc = {}
+      wc = Hash.new(0)
       for entry in feed.entries do 
         words = get_words(entry.title.to_s + ' ' + entry.summary.to_s)
         for word in words do 
-          wc[word] = 0 unless wc[word]
           wc[word] += 1
         end
       end
-      return feed.title, wc
+      return feed.title.strip, wc
     end
     
     def get_words(html)
-      words = Nokogiri::HTML.parse(html).inner_text.gsub(/[^A-Za-z]/,' ')
+      words = Nokogiri::HTML.parse(html).inner_text.strip.gsub(/[^A-Za-z]/,' ')
       words.downcase.split(/\s+/)
     end
     
