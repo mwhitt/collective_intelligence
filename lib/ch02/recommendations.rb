@@ -64,11 +64,12 @@ module Recommendations
     end
     
     def transform_prefs(data = $critics)
-      result = Hash.new({})
+      result = {}
       for person in data.keys do 
         for item in data[person] do
           key = item[0]
           value = item[1]
+          result[key] = {} unless result[key]
           result[key][person] = data[person][key]
         end
       end 
