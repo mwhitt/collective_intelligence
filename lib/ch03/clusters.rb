@@ -17,7 +17,58 @@ module Clusters
     
     def run
       row_names, col_names, data = read_blog_data
-      print_cluster(h_cluster(data), row_names)
+      # print_cluster(h_cluster(data), row_names)
+      pp k_cluster(data)
+    end
+    
+    def k_cluster(rows, k = 4)
+      # create a list of min and max values for each point
+      ranges = rows[0].size.times.inject([]) do |list, i|
+        list << rows.inject([]){|col, row| col << row[i]}.minmax{|a,b| a <=> b}
+      end
+      # create k random points
+      clusters = k.times.inject([]) do |list, j| 
+        list << rows[0].size.times.inject([]) do |col, i|
+           col << rand * (ranges[i][1] - ranges[i][0]) + ranges[i][0]
+        end
+      end
+      
+      last_matches = nil
+      best_matches = nil
+      100.times do |t|
+        puts "Iteration #{t}"
+        best_matches = k.times.inject([]){|a, i| a << []}
+        
+        rows.size.times do |j|
+          row = rows[j]
+          best_match = 0
+          k.times do |i|
+            d = pearson(clusters[i], row)
+            best_match = i if d < pearson(clusters[best_match], row)
+          end
+          best_matches[best_match] << j
+        end
+        
+        break if best_matches == last_matches
+        last_matches = best_matches
+        # move the centroids to the average of their members
+        k.times do |i|
+          avgs = [0.0] * rows[0].size
+          if best_matches[i].size > 0
+            for rowid in best_matches[i]
+              rows[rowid].size.times do |m|
+                avgs[m] += rows[rowid][m]
+              end
+            end
+            avgs.size.times do |j|
+              avgs[j] /= best_matches[i].size
+            end
+            clusters[i] = avgs
+          end
+        end
+      end
+      
+      return best_matches
     end
     
     def print_cluster(clust, labels = nil, n = 0)
@@ -34,13 +85,13 @@ module Clusters
       distances = {}
       current_clust_id = -1
       
-      clust = (0..(rows.size - 1)).inject([]){|list, c| list << Bicluster.new({:vec => rows[c], :id => c})}
+      clust = rows.size.times.inject([]){|list, c| list << Bicluster.new({:vec => rows[c], :id => c})}
       
       while clust.size > 1
         lowest_pair = [0,1]
         closest = pearson(clust[0].vec, clust[1].vec)
         
-        0.upto(clust.size - 1) do |i|
+        clust.size.times do |i|
           (i + 1).upto(clust.size - 1) do |j|
             if !distances.has_key?([clust[i].id, clust[j].id])
               distances[[clust[i].id, clust[j].id]] = pearson(clust[i].vec, clust[j].vec)
@@ -54,7 +105,9 @@ module Clusters
           end
         end
         
-        merg_evec = (0..(clust[0].vec.size - 1)).inject([]){|vec, c| vec << clust[lowest_pair[0]].vec[c] + clust[lowest_pair[1]].vec[c] / 2.0}
+        merg_evec = clust[0].vec.size.times.inject([]) do |vec, c| 
+          vec << clust[lowest_pair[0]].vec[c] + clust[lowest_pair[1]].vec[c] / 2.0
+        end
         
         new_cluster = Bicluster.new({:vec => merg_evec, 
                                      :left => clust[lowest_pair[0]], 
@@ -76,7 +129,7 @@ module Clusters
       sum1sq = v1.inject(0){|sum, v| sum += v**2}
       sum2sq = v2.inject(0){|sum, v| sum += v**2}
       
-      p_sum = (0..(v1.size - 1)).inject(0){|sum, c| sum += v1[c] * v2[c]}
+      p_sum = v1.size.times.inject(0){|sum, c| sum += v1[c] * v2[c]}
       
       num = p_sum - (sum1 * sum2 / v1.size)
       den = Math.sqrt((sum1sq - sum1**2 / v1.size) * (sum2sq - sum2**2 / v1.size))
