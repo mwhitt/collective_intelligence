@@ -17,8 +17,20 @@ module Clusters
     
     def run
       row_names, col_names, data = read_blog_data
-      # print_cluster(h_cluster(data), row_names)
-      pp k_cluster(data)
+      # print_h_cluster(h_cluster(data), row_names)
+      print_k_cluster(k_cluster(data, 10), row_names)
+    end
+    
+    def print_k_cluster(clust, labels)
+      puts "------------------------------"
+      puts "------------------------------"
+      clust.each do |centroid|
+        centroid.each do |id|
+          puts labels[id]
+        end
+        puts "------------------------------"
+        puts "------------------------------"
+      end
     end
     
     def k_cluster(rows, k = 4)
@@ -71,7 +83,7 @@ module Clusters
       return best_matches
     end
     
-    def print_cluster(clust, labels = nil, n = 0)
+    def print_h_cluster(clust, labels = nil, n = 0)
       if clust.id < 0
         puts "-"
       else
