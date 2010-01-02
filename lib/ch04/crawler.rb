@@ -11,7 +11,7 @@ module Crawler
         anemone.on_every_page do |page|
             puts page.url
             web_page = WebPage.new(:url => page.url)
-            web_page.separate_words(text_only(page.doc))
+            web_page.separate_words(page.doc.at('head/title').try(:inner_text).to_s + ' ' + text_only(page.doc))
             web_page.save
         end
       end
