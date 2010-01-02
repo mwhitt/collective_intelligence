@@ -11,9 +11,10 @@ class WebPage
   include MongoMapper::Document
   
   key :url, String
+  key :links, Array, :index => true
   many :word_locations
   
-  #ensure_index 'word_locations.word'
+  ensure_index 'word_locations.word'
   
   def before_create
     errors.add("Url has already been crawled.") if WebPage.find_by_url(self.url)

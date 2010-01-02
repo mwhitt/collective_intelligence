@@ -10,11 +10,17 @@ module Search
     end
     
     def scored_list(pages, query)
-      weight = 1.0
-      scores = frequency_scores(pages, query)
-      pages.inject([]) do |col, page|
-        col << [(weight / scores[page.id]), page.url]
-      end.sort.reverse.take(30)
+      weights = [[1.0, frequency_scores(pages, query)],
+                 [1.5, location_scores(pages, query)]]
+                 
+      total_weights = weights.inject(Hash.new(0)) do |col, wa|
+        weight = wa[0]
+        scores = wa[1]
+        scores.each_pair{|k,v| col[k] += weight * v}
+        col
+      end
+      
+      pages.inject([]){|col, page| col << [total_weights[page.id], page.url]}.sort.reverse.take(30)
     end
     
     def normalize_scores(scores, use_small = false)
@@ -40,7 +46,14 @@ module Search
     end
     
     def location_scores(pages, query)
-
+      terms = query.split
+      locations = pages.inject({}) do |col, page|
+        word_locations = page.word_locations.collect{|wl| wl if terms.include?(wl.word)}.compact
+        loc = word_locations.inject(0){|sum, wl| sum += wl.location}
+        col[page.id] = (loc < 1000000 ? loc : 1000000).to_f
+        col
+      end
+      normalize_scores(locations, true)
     end
     
     def frequency_scores(pages, query)

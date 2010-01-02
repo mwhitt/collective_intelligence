@@ -5,7 +5,7 @@ require 'mongo_mapper'
 class WordLocation
   include MongoMapper::EmbeddedDocument
   
-  key :word, String#, :index => true
+  key :word, String, :index => true
   key :location, Integer
   
 end
