@@ -2,10 +2,10 @@ require 'rubygems'
 require 'active_support'
 require 'mongo_mapper'
 
-class WordLocation
+class Link
   include MongoMapper::EmbeddedDocument
   
-  key :word, String, :index => true
-  key :locations, Array
+  key :url, String, :index => true
+  key :words, Array, :index => true
   
 end
