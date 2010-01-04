@@ -12,6 +12,7 @@ class WebPage
   include MongoMapper::Document
   
   key :url, String
+  key :page_rank, Float, :default => 1.0
   
   many :links
   many :word_locations do

@@ -10,9 +10,11 @@ module Search
     end
     
     def scored_list(pages, query)
-      weights = [[1.0, frequency_scores(pages, query)],
+      weights = [[2.0, frequency_scores(pages, query)],
                  [1.0, location_scores(pages, query)],
-                 [2.0, distance_scores(pages, query)]]
+                 # [1.0, distance_scores(pages, query)],
+                 # [1.0, inbound_link_scores(pages)],
+                 [1.5, page_rank_scores(pages)]]
                  
       total_weights = weights.inject(Hash.new(0)) do |col, wa|
         weight = wa[0]
@@ -24,18 +26,32 @@ module Search
       pages.inject([]){|col, page| col << [total_weights[page.id], page.url]}.sort.reverse.take(30)
     end
     
+    def page_rank_scores(pages)
+      max_pr = pages.collect{|p| p.page_rank}.max
+      pages.inject({}) do |col, page|
+        col[page.id] = (page.page_rank.to_f / max_pr.to_f).to_f
+        col
+      end
+    end
+    
+    def inbound_link_scores(pages)
+      link_scores = pages.inject({}) do |col, page|
+        col[page.id] = WebPage.count('links.url' => page.url).to_f
+        col
+      end
+      normalize_scores(link_scores)
+    end
+    
     def distance_scores(pages, query)
-      terms = query.split
-      
-      if terms.size < 2
+      if query.split.size < 2
         return pages.inject({}){|col, page| col[page.id] = 1.0; col}
       end
-      
+ 
       distances = pages.inject({}){|col, page| col[page.id] = 1000000.0; col}
       pages.each do |page|
-        word_locations = page.word_locations.collect{|wl| wl if terms.include?(wl.word)}.compact
-        dist = (1..word_locations.size - 1).inject(0) do |sum, i|
-          sum += (word_locations[i].location - word_locations[i - 1].location).abs
+        wl = word_locations(query, page)
+        dist = (1..wl.size - 1).inject(0) do |sum, i|
+          sum += (wl[i] - wl[i - 1]).abs
         end.to_f
         distances[page.id] = dist if dist < distances[page.id]
       end
@@ -43,10 +59,8 @@ module Search
     end
     
     def location_scores(pages, query)
-      terms = query.split
       locations = pages.inject({}) do |col, page|
-        word_locations = page.word_locations.collect{|wl| wl if terms.include?(wl.word)}.compact
-        loc = word_locations.inject(0){|sum, wl| sum += wl.location}
+        loc = word_locations(query, page).inject(0){|sum, wl| sum += wl}
         col[page.id] = (loc < 1000000 ? loc : 1000000).to_f
         col
       end
@@ -55,11 +69,7 @@ module Search
     
     def frequency_scores(pages, query)
       counts = pages.inject({}) do |col, page|
-        word_array = page.word_locations.collect{|w| w.word}
-        score = query.split.inject(0) do |count, word|
-          count += word_array.count(word)
-        end
-        col[page.id] = score.to_f
+        col[page.id] = word_locations(query, page).size.to_f
         col
       end
       normalize_scores(counts)
@@ -85,6 +95,11 @@ module Search
           col
         end
       end
+    end
+    
+    def word_locations(query, page)
+      terms = query.split
+      terms.inject([]){|col, t| col << page.word_locations[t].locations}.flatten.compact.sort
     end
     
   end

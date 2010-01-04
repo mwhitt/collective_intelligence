@@ -8,8 +8,7 @@ module Crawler
   class << self
   
     def crawl
-      # Anemone.crawl("http://kiwitobes.com/wiki/Categorical_list_of_programming_languages.html") do |anemone|
-      Anemone.crawl("http://myfreecopyright.com") do |anemone|
+      Anemone.crawl("http://kiwitobes.com/wiki/Categorical_list_of_programming_languages.html") do |anemone|
         anemone.on_every_page do |page|
             puts page.url
             uri = URI.parse(page.url.to_s)
