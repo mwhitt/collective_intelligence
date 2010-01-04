@@ -12,6 +12,7 @@ module Search
     def scored_list(pages, query)
       weights = [[2.0, frequency_scores(pages, query)],
                  [1.0, location_scores(pages, query)],
+                 # [1.0, link_text_scores(pages, query)],
                  # [1.0, distance_scores(pages, query)],
                  # [1.0, inbound_link_scores(pages)],
                  [1.5, page_rank_scores(pages)]]
@@ -24,6 +25,29 @@ module Search
       end
       
       pages.inject([]){|col, page| col << [total_weights[page.id], page.url]}.sort.reverse.take(30)
+    end
+    
+    def link_text_scores(pages, query)
+      terms = query.split
+      link_scores = pages.inject({}){|col, page| col[page.id] = 0.0; col}
+      
+      pages.each do |page|
+        WebPage.all('links.url' => page.url, 'links.words' => {'$in' => terms}, :fields => 'id').each do |wp|
+          wp = WebPage.find(wp.id, :fields => %w(page_rank links))
+          links = wp.links.find_all{|l| l.url == page.url}
+          links.each do |link|
+            terms.each{|term| link_scores[page.id] += wp.page_rank if link.words.include?(term)}
+          end
+        end
+      end
+      
+      max_score = link_scores.values.max
+      link_scores.inject({}) do |col, kv|
+        key = kv[0]
+        score = kv[1]
+        col[key] = score.to_f / max_score
+        col
+      end
     end
     
     def page_rank_scores(pages)
