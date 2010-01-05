@@ -1,11 +1,12 @@
 require 'pp'
 
 class Classifier
-  attr_accessor :feature_category, :cat_count
+  attr_accessor :feature_category, :cat_count, :thresholds
   
   def initialize
     @feature_category = {}
     @cat_count = Hash.new(0)
+    @thresholds = Hash.new(1)
   end
   
   def inc_feature_category(feature, category)
@@ -31,6 +32,25 @@ class Classifier
   
   def categories
     @cat_count.keys
+  end
+  
+  def classify(item, default = nil)
+    max = 0.0
+    best = nil
+    probs = categories.inject({}) do |p, c|
+      p[c] = prob(item, c)
+      if p[c] > max
+        max = p[c]
+        best = c
+      end
+      p
+    end
+    
+    probs.keys.each do |cat|
+      next if cat == best
+      return default if probs[cat] * thresholds[best] > probs[best]
+    end
+    return best
   end
   
   def weighted_prob(feature, category, weight = 1.0, ap = 0.5)
