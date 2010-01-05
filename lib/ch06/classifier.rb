@@ -26,7 +26,7 @@ class Classifier
   end
   
   def total_count
-    @cat_count.size
+    categories.inject(0){|sum, cat| sum += category_count(cat)}
   end
   
   def categories
