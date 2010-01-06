@@ -1,6 +1,25 @@
 require 'classifier'
 
 class Fisher < Classifier
+  attr_accessor :minimums
+  
+  def initialize
+    @minimums = Hash.new(0)
+    super
+  end
+  
+  def classify(item, default = nil)
+    best = default
+    max = 0.0
+    categories.each do |c|    
+      p = fisher_prob(item, c)
+      if p > minimums[c] and p > max
+        best = c
+        max = p
+      end
+    end
+    best
+  end
   
   def category_prob(feature, category)
     clf = feature_prob(feature, category)
